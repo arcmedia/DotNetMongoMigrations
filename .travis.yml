@@ -1,0 +1,7 @@
+language: csharp
+mono: none
+dotnet: 2.2.101
+solution: src/MongoMigrations.sln
+script:
+ - dotnet restore
+ - dotnet build -c Release
