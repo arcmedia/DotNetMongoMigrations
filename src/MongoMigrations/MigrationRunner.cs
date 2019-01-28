@@ -1,101 +1,172 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using MongoDB.Bson.Serialization;
+using MongoDB.Driver;
+using MongoMigrations.Migrations;
+
 namespace MongoMigrations
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Linq;
-	using MongoDB.Bson.Serialization;
-	using MongoDB.Driver;
+    /// <summary>
+    /// Migration Runner
+    /// </summary>
+    public class MigrationRunner : IMigrationRunner
+    {
+        /// <summary>
+        /// The database
+        /// </summary>
+        private readonly IMongoDatabase _database;
 
-	public class MigrationRunner
-	{
-		static MigrationRunner()
-		{
-			Init();
-		}
+        /// <summary>
+        /// The database status
+        /// </summary>
+        private readonly IDatabaseMigrationStatus _databaseStatus;
 
-		public static void Init()
-		{
-			BsonSerializer.RegisterSerializer(typeof (MigrationVersion), new MigrationVersionSerializer());
-		}
+        /// <summary>
+        /// The logger
+        /// </summary>
+        private readonly ILogger _logger;
 
-		public MigrationRunner(string mongoServerLocation, string databaseName)
-			: this(new MongoClient(mongoServerLocation).GetServer().GetDatabase(databaseName))
-		{
-		}
+        static MigrationRunner()
+        {
+            BsonSerializer.RegisterSerializer(typeof(MigrationVersion), new MigrationVersionSerializer());
+        }
 
-		public MigrationRunner(MongoDatabase database)
-		{
-			Database = database;
-			DatabaseStatus = new DatabaseMigrationStatus(this);
-			MigrationLocator = new MigrationLocator();
-		}
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MigrationRunner" /> class.
+        /// </summary>
+        /// <param name="database">The database.</param>
+        public MigrationRunner(IMongoDatabase database)
+        {
+            IServiceCollection serviceCollection = new ServiceCollection()
+                .AddMongoMigrations()
+                .AddLogging(cfg =>
+                {
+                    cfg.AddConsole();
+                });
 
-		public MongoDatabase Database { get; set; }
-		public MigrationLocator MigrationLocator { get; set; }
-		public DatabaseMigrationStatus DatabaseStatus { get; set; }
+            serviceCollection.AddSingleton(database);
 
-		public virtual void UpdateToLatest()
-		{
-			Console.WriteLine(WhatWeAreUpdating() + " to latest...");
-			UpdateTo(MigrationLocator.LatestVersion());
-		}
+            var serviceProvider = serviceCollection.BuildServiceProvider();
 
-		private string WhatWeAreUpdating()
-		{
-			return string.Format("Updating server(s) \"{0}\" for database \"{1}\"", ServerAddresses(), Database.Name);
-		}
+            _database = database;
+            _databaseStatus = _databaseStatus = serviceProvider.GetService<IDatabaseMigrationStatus>();
+            _logger = serviceProvider.GetService<ILogger<MigrationRunner>>();
+            MigrationLocator = serviceProvider.GetService<IMigrationLocator>();
+        }
 
-	    private string ServerAddresses()
-	    {
-            return String.Join(",", Database.Server.Instances.Select(s => s.Address.ToString()));
-	    }
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MigrationRunner" /> class.
+        /// </summary>
+        /// <param name="database">The database.</param>
+        /// <param name="migrationLocator">The migration locator.</param>
+        /// <param name="databaseStatus">The database status.</param>
+        /// <param name="logger">The logger.</param>
+        public MigrationRunner(IMongoDatabase database, IMigrationLocator migrationLocator, IDatabaseMigrationStatus databaseStatus, ILogger<MigrationRunner> logger)
+        {
+            _database = database ?? throw new ArgumentNullException(nameof(database));
+            _databaseStatus = databaseStatus ?? throw new ArgumentNullException(nameof(databaseStatus));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            MigrationLocator = migrationLocator ?? throw new ArgumentNullException(nameof(migrationLocator));
+        }
 
-	    protected virtual void ApplyMigrations(IEnumerable<Migration> migrations)
-		{
-			migrations.ToList()
-			          .ForEach(ApplyMigration);
-		}
+        /// <summary>
+        /// Gets the migration locator.
+        /// </summary>
+        public IMigrationLocator MigrationLocator { get; private set; }
 
-		protected virtual void ApplyMigration(Migration migration)
-		{
-			Console.WriteLine(new {Message = "Applying migration", migration.Version, migration.Description, DatabaseName = Database.Name});
+        /// <summary>
+        /// Updates the Database to Latest Migration.
+        /// </summary>
+        public virtual void UpdateToLatest()
+        {
+            _logger.LogInformation($"{WhatWeAreUpdating()} to latest...");
+            UpdateTo(MigrationLocator.LatestVersion());
+        }
 
-			var appliedMigration = DatabaseStatus.StartMigration(migration);
-			migration.Database = Database;
-			try
-			{
-				migration.Update();
-			}
-			catch (Exception exception)
-			{
-				OnMigrationException(migration, exception);
-			}
-			DatabaseStatus.CompleteMigration(appliedMigration);
-		}
+        /// <summary>
+        /// Updates to a specific version.
+        /// </summary>
+        /// <param name="updateToVersion">The update to version.</param>
+        public virtual void UpdateTo(MigrationVersion updateToVersion)
+        {
+            var currentVersion = _databaseStatus.GetLastAppliedMigration();
+            _logger.LogInformation($"Updating server(s) \"{ServerAddresses()}\" for database \"{_database.DatabaseNamespace.DatabaseName}\", from version {currentVersion} to version {updateToVersion}");
 
-		protected virtual void OnMigrationException(Migration migration, Exception exception)
-		{
-			var message = new
-				{
-					Message = "Migration failed to be applied: " + exception.Message,
-					migration.Version,
-					Name = migration.GetType(),
-					migration.Description,
-					DatabaseName = Database.Name
-				};
-			Console.WriteLine(message);
-			throw new MigrationException(message.ToString(), exception);
-		}
+            var migrations = MigrationLocator.GetMigrationsAfter(currentVersion)
+                .Where(m => m.Version <= updateToVersion);
 
-		public virtual void UpdateTo(MigrationVersion updateToVersion)
-		{
-			var currentVersion = DatabaseStatus.GetLastAppliedMigration();
-			Console.WriteLine(new {Message = WhatWeAreUpdating(), currentVersion, updateToVersion, DatabaseName = Database.Name});
+            ApplyMigrations(migrations);
+        }
 
-			var migrations = MigrationLocator.GetMigrationsAfter(currentVersion)
-			                                 .Where(m => m.Version <= updateToVersion);
+        /// <summary>
+        /// Applies the migrations.
+        /// </summary>
+        /// <param name="migrations">The migrations.</param>
+        protected virtual void ApplyMigrations(IEnumerable<IMigration> migrations)
+        {
+            if (!migrations.Any())
+            {
+                _logger.LogInformation($"No migration found");
+            }
 
-			ApplyMigrations(migrations);
-		}
-	}
+            migrations.ToList()
+                .ForEach(ApplyMigration);
+        }
+
+        /// <summary>
+        /// Applies a single migration.
+        /// </summary>
+        /// <param name="migration">The migration.</param>
+        protected virtual void ApplyMigration(IMigration migration)
+        {
+            _logger.LogInformation($"Applying migration version {migration.Version} \"{migration.Description}\" to database {_database.DatabaseNamespace.DatabaseName}");
+
+            var appliedMigration = _databaseStatus.StartMigration(migration);
+            try
+            {
+                migration.Update(_database);
+            }
+            catch (Exception exception)
+            {
+                OnMigrationException(migration, exception);
+            }
+
+            _databaseStatus.CompleteMigration(appliedMigration);
+
+            _logger.LogInformation($"Migration version {migration.Version} \"{migration.Description}\" successfully to database {_database.DatabaseNamespace.DatabaseName}");
+        }
+
+        /// <summary>
+        /// Called when a migration exception occurs.
+        /// </summary>
+        /// <param name="migration">The migration.</param>
+        /// <param name="exception">The exception.</param>
+        protected virtual void OnMigrationException(IMigration migration, Exception exception)
+        {
+            var message = new
+            {
+                Message = $"Migration failed to be applied: {exception.Message}",
+                migration.Version,
+                Name = migration.GetType(),
+                migration.Description,
+                DatabaseName = _database.DatabaseNamespace.DatabaseName
+            };
+
+            _logger.LogError(exception, $"Migration version {migration.Version} \"{migration.Description}\" from type \"{migration.GetType().FullName}\" to database {_database.DatabaseNamespace.DatabaseName} failed to be applied");
+            throw new MigrationException(message.ToString(), exception);
+        }
+
+        private string WhatWeAreUpdating()
+        {
+            return $"Updating server(s) \"{ServerAddresses()}\" for database \"{_database.DatabaseNamespace.DatabaseName}\"";
+        }
+
+        private string ServerAddresses()
+        {
+            return string.Join(",", _database.Client.Cluster.Description.Servers.Select(s => s.EndPoint.ToString()));
+        }
+    }
 }
