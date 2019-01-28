@@ -1,9 +1,12 @@
-Build Status
+# Build Status
 
 [![CircleCI](https://circleci.com/gh/arcmedia/DotNetMongoMigrations/tree/master.svg?style=svg)](https://circleci.com/gh/arcmedia/DotNetMongoMigrations/tree/master)
 
-Why mongo migrations?
---
+# Nuget Package
+https://www.nuget.org/packages/Arcmedia.MongoMigrations/
+
+# Why mongo migrations?
+
 We no longer need create schema migrations, as this is a schemaless database, when we add collections (tables) or properties on our entities (columns), we don't need to run creation scripts.
 
 However, we need migrations when:
@@ -18,16 +21,14 @@ However, we need migrations when:
 
 So the idea is to have a simple migration script that executes commands against Mongo.  It should track the applied migrations and quickly be able to apply new migrations.
 
-Why DotNetMongoMigrations?
---
+# Why DotNetMongoMigrations?
 
 1. This project is meant to allow for migrations to be created in C# or other .Net languages and kept with the code base.  
 1. Access .Net APIs for manipulating documents
 1. Leverage existing NUnit test projects or other test projects to test migrations
 1. Provide an automatable foundation to track and apply migrations.
 
-Migration recommendations
---
+# Migration recommendations
 
 1. Keep them as simple as possible
 1. Do not couple migrations to your domain types, they will be brittle to change, and the point of a migration is to update the data representation when your model changes.
@@ -36,8 +37,7 @@ Migration recommendations
 1. Write tests of your migrations, TDD them from existing data scenarios to new forms
 1. Automate the deployment of migrations
 
-Migration 
---
+# Migration 
 
 This is a simple migration that executes a mongo javascript command to rename the Customer key from Name to FullName.
 
@@ -55,8 +55,7 @@ This is a simple migration that executes a mongo javascript command to rename th
 	}
 ```
 
-Collection Migration
---
+# Collection Migration
 
 These are migrations performed on every document in a given collection.  Supply the version number and collection name, then simply implement the update per document method UpdateDocument to manipulate each document.
 
@@ -77,8 +76,7 @@ These are migrations performed on every document in a given collection.  Supply 
 	}
 ```
 
-Experimental Migrations
--- 
+# Experimental Migrations
 
 Sometimes we want to work on a migration but it's not complete yet, these can be attributed with the ExperimentalAttribute and the base migrations runner will exclude them.
 
@@ -88,8 +86,7 @@ Sometimes we want to work on a migration but it's not complete yet, these can be
 	{
 ```
 
-Running Migrations
---
+# Running Migrations
 
 The project provides a MigrationRunner which contains:
 
@@ -101,8 +98,7 @@ The project provides a MigrationRunner which contains:
  * Filters on experimental by default.  
  * Filters can be added/removed via the MigrationLocator.MigrationFilters list.
 
-Sample App Startup Version Check
---
+# Sample App Startup Version Check
 
 Simply plug the following code into your application startup, whether that be a web or service app, to terminate the application if the database is not at the expected version.  This assumes you have mongo server location and database name in a settings file and that Migration1 is in the assembly containing migrations to be scanned for.
 
@@ -118,13 +114,11 @@ Simply plug the following code into your application startup, whether that be a 
 	}
 ```
 
-Using migrations with a deployment process
---
+# Using migrations with a deployment process
 
 Document databases for the most do not support transactions with rollback, therefore it's a good idea to backup a database before applying migrations.  Also, in order to reduce the manual work involved and the risk of error, it's a good idea to automate your migration deployments.  Mongo supports a backup and restore utility out of the box, this can be combined with the migrations above to provide an automated deployment of the migrations.
 
-Testing migrations
---
+# Testing migrations
 
 Here is a sample test to rename a key on a document via the BsonDocument api, obviously this is a trivial case but you can see how you can leverage manipulations of the BsonDocument api to test your migrations.  Also, you could create migration databases and prepopulate them with sample data when using the mongo json api.
 
