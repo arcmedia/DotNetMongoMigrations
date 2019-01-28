@@ -11,7 +11,7 @@ jobs:
       - image: microsoft/dotnet:2.2-sdk
     steps:
       - checkout
-      - run: dotnet pack src/MongoMigrations/MongoMigrations.csproj -p "$(pwd)/NugetPackages" -c Release
+      - run: dotnet pack src/MongoMigrations/MongoMigrations.csproj -o "$(pwd)/NugetPackages" -c Release
       - run: dotnet push ./NugetPackages/*.nupkg -k $NuGetApiKey
 workflows:
   version: 2
