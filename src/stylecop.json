@@ -1,0 +1,33 @@
+{
+  "$schema": "https://raw.githubusercontent.com/DotNetAnalyzers/StyleCopAnalyzers/master/StyleCop.Analyzers/StyleCop.Analyzers/Settings/stylecop.schema.json",
+  "settings": {
+    "documentationRules": {
+      "copyrightText": "Copyright (c) {companyName}.  All Rights Reserved.",
+      "companyName": "Arcmedia",
+      "xmlHeader": false,
+      "fileNamingConvention": "stylecop",
+      "documentPrivateElements": false,
+      "documentInternalElements": false,
+      "documentPrivateFields": false,
+      "documentExposedElements": true,
+      "documentInterfaces": true
+    },
+    "maintainabilityRules": {
+      "topLevelTypes": [
+        "class",
+        "enum",
+        "interface",
+        "struct"
+      ]
+    },
+    "layoutRules": {
+      "newlineAtEndOfFile": "allow",
+      "allowConsecutiveUsings": true
+    },
+    "orderingRules": {
+      "systemUsingDirectivesFirst": true,
+      "blankLinesBetweenUsingGroups": "require",
+      "usingDirectivesPlacement": "outsideNamespace"
+    }
+  }
+}
