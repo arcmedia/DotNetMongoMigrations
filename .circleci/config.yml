@@ -15,13 +15,12 @@ jobs:
       - run: dotnet push ./NugetPackages/*.nupkg -k $NuGetApiKey
 workflows:
   version: 2
-  build-and-deploy:
+  build_and_deploy:
     jobs:
       - build
       - deploy:
-        filters:
-          branches:
-            only:
-              - master
-        requires:
-          - build
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
