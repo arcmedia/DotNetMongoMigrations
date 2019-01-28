@@ -4,7 +4,7 @@ jobs:
     docker:
       - image: microsoft/dotnet:2.2-sdk
     steps:
-      - dotnet build -c Release ./src/MongoMigrations.sln
+      - run: dotnet build -c Release ./src/MongoMigrations.sln
 workflows:
   version: 2
   build:
