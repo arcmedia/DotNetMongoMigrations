@@ -8,6 +8,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{E7349874-7F05-4207-802C-6A8AD38AB7BF}"
 	ProjectSection(SolutionItems) = preProject
 		..\.circleci\config.yml = ..\.circleci\config.yml
+		..\README.markdown = ..\README.markdown
 	EndProjectSection
 EndProject
 Global
