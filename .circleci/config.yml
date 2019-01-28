@@ -12,7 +12,7 @@ jobs:
     steps:
       - checkout
       - run: dotnet pack src/MongoMigrations/MongoMigrations.csproj -o "$(pwd)/NugetPackages" -c Release
-      - run: dotnet nuget push ./NugetPackages/*.nupkg -k ${NuGetApiKey}
+      - run: dotnet nuget push ./NugetPackages/*.nupkg -k ${NuGetApiKey} -s https://api.nuget.org/v3/index.json
 workflows:
   version: 2
   build_and_deploy:
