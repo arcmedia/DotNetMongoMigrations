@@ -1,6 +1,6 @@
 Build Status
---
-[http://teamcity.codebetter.com/project.html?projectId=DotNetMongoMigrations](http://teamcity.codebetter.com/project.html?projectId=DotNetMongoMigrations)
+
+[![CircleCI](https://circleci.com/gh/arcmedia/DotNetMongoMigrations/tree/master.svg?style=svg)](https://circleci.com/gh/arcmedia/DotNetMongoMigrations/tree/master)
 
 Why mongo migrations?
 --
@@ -123,18 +123,6 @@ Using migrations with a deployment process
 
 Document databases for the most do not support transactions with rollback, therefore it's a good idea to backup a database before applying migrations.  Also, in order to reduce the manual work involved and the risk of error, it's a good idea to automate your migration deployments.  Mongo supports a backup and restore utility out of the box, this can be combined with the migrations above to provide an automated deployment of the migrations.
 
-Here is a sample powershell script we use to automate this deployment
-
-[Migration PowerShell Script](https://github.com/phoenixwebgroup/DotNetMongoMigrations/blob/master/MigrateMongo.ps1)
-
-It takes parameters for server name/ip, database name, base backup directory and migration dll path
-
-We execute it from our rake deployment via:
-
-```ruby
-sh 'powershell -ExecutionPolicy Unrestricted -File deployments\mongo\MigrateMongo.ps1 ' + host + ' databaseName deployments\mongo\backup build\Migrations.dll '
-```
-
 Testing migrations
 --
 
@@ -174,8 +162,3 @@ Here is a sample test to rename a key on a document via the BsonDocument api, ob
 		}
 	}
 ```
-
-Thanks 
---
-
-To Codebetter and JetBrains for hosting our builds
