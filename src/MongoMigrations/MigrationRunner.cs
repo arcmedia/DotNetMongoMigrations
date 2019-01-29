@@ -15,6 +15,11 @@ namespace MongoMigrations
     public class MigrationRunner : IMigrationRunner
     {
         /// <summary>
+        /// The migration target
+        /// </summary>
+        private readonly IMigrationTarget _migrationTarget;
+
+        /// <summary>
         /// The database
         /// </summary>
         private readonly IMongoDatabase _database;
@@ -52,6 +57,8 @@ namespace MongoMigrations
             var serviceProvider = serviceCollection.BuildServiceProvider();
 
             _database = database;
+
+            _migrationTarget = serviceProvider.GetService<IMigrationTarget>();
             _databaseStatus = _databaseStatus = serviceProvider.GetService<IDatabaseMigrationStatus>();
             _logger = serviceProvider.GetService<ILogger<MigrationRunner>>();
             MigrationLocator = serviceProvider.GetService<IMigrationLocator>();
@@ -60,12 +67,14 @@ namespace MongoMigrations
         /// <summary>
         /// Initializes a new instance of the <see cref="MigrationRunner" /> class.
         /// </summary>
+        /// <param name="migrationTarget">The migration target.</param>
         /// <param name="database">The database.</param>
         /// <param name="migrationLocator">The migration locator.</param>
         /// <param name="databaseStatus">The database status.</param>
         /// <param name="logger">The logger.</param>
-        public MigrationRunner(IMongoDatabase database, IMigrationLocator migrationLocator, IDatabaseMigrationStatus databaseStatus, ILogger<MigrationRunner> logger)
+        public MigrationRunner(IMigrationTarget migrationTarget, IMongoDatabase database, IMigrationLocator migrationLocator, IDatabaseMigrationStatus databaseStatus, ILogger<MigrationRunner> logger)
         {
+            _migrationTarget = migrationTarget ?? throw new ArgumentNullException(nameof(migrationTarget));
             _database = database ?? throw new ArgumentNullException(nameof(database));
             _databaseStatus = databaseStatus ?? throw new ArgumentNullException(nameof(databaseStatus));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -82,7 +91,7 @@ namespace MongoMigrations
         /// </summary>
         public virtual void UpdateToLatest()
         {
-            _logger.LogInformation($"{WhatWeAreUpdating()} to latest...");
+            _logger.LogInformation($"{_migrationTarget} to latest...");
             UpdateTo(MigrationLocator.LatestVersion());
         }
 
@@ -93,7 +102,7 @@ namespace MongoMigrations
         public virtual void UpdateTo(MigrationVersion updateToVersion)
         {
             var currentVersion = _databaseStatus.GetLastAppliedMigration();
-            _logger.LogInformation($"Updating server(s) \"{ServerAddresses()}\" for database \"{_database.DatabaseNamespace.DatabaseName}\", from version {currentVersion} to version {updateToVersion}");
+            _logger.LogInformation($"Updating server(s) \"{_migrationTarget.ServerAddresses}\" for database \"{_migrationTarget.DatabaseName}\", from version {currentVersion} to version {updateToVersion}");
 
             var migrations = MigrationLocator.GetMigrationsAfter(currentVersion)
                 .Where(m => m.Version <= updateToVersion);
@@ -122,7 +131,7 @@ namespace MongoMigrations
         /// <param name="migration">The migration.</param>
         protected virtual void ApplyMigration(IMigration migration)
         {
-            _logger.LogInformation($"Applying migration version {migration.Version} \"{migration.Description}\" to database {_database.DatabaseNamespace.DatabaseName}");
+            _logger.LogInformation($"Applying migration version {migration.Version} \"{migration.Description}\" to database {_migrationTarget.DatabaseName}");
 
             var appliedMigration = _databaseStatus.StartMigration(migration);
             try
@@ -136,7 +145,7 @@ namespace MongoMigrations
 
             _databaseStatus.CompleteMigration(appliedMigration);
 
-            _logger.LogInformation($"Migration version {migration.Version} \"{migration.Description}\" successfully to database {_database.DatabaseNamespace.DatabaseName}");
+            _logger.LogInformation($"Migration version {migration.Version} \"{migration.Description}\" successfully to database {_migrationTarget.DatabaseName}");
         }
 
         /// <summary>
@@ -152,21 +161,11 @@ namespace MongoMigrations
                 migration.Version,
                 Name = migration.GetType(),
                 migration.Description,
-                DatabaseName = _database.DatabaseNamespace.DatabaseName
+                DatabaseName = _migrationTarget.DatabaseName
             };
 
-            _logger.LogError(exception, $"Migration version {migration.Version} \"{migration.Description}\" from type \"{migration.GetType().FullName}\" to database {_database.DatabaseNamespace.DatabaseName} failed to be applied");
+            _logger.LogError(exception, $"Migration version {migration.Version} \"{migration.Description}\" from type \"{migration.GetType().FullName}\" to database {_migrationTarget.DatabaseName} failed to be applied");
             throw new MigrationException(message.ToString(), exception);
-        }
-
-        private string WhatWeAreUpdating()
-        {
-            return $"Updating server(s) \"{ServerAddresses()}\" for database \"{_database.DatabaseNamespace.DatabaseName}\"";
-        }
-
-        private string ServerAddresses()
-        {
-            return string.Join(",", _database.Client.Cluster.Description.Servers.Select(s => s.EndPoint.ToString()));
         }
     }
 }
