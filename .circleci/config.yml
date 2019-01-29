@@ -6,6 +6,12 @@ jobs:
     steps:
       - checkout
       - run: dotnet build -c Release ./src/MongoMigrations.sln
+  test:
+    docker:
+      - image: microsoft/dotnet:2.2-sdk
+    steps:
+      - checkout
+      - run: dotnet test src/MongoMigrations.Tests/MongoMigrations.Tests.csproj
   deploy:
     docker:
       - image: microsoft/dotnet:2.2-sdk
@@ -18,9 +24,12 @@ workflows:
   build_and_deploy:
     jobs:
       - build
-      - deploy:
+      - test:
           requires:
             - build
+      - deploy:
+          requires:
+            - test
           filters:
             branches:
               only: master
