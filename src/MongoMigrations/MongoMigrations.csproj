@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <Product>Arcmedia</Product>
-    <Version>1.0.2-prerelease</Version>
+    <Version>1.0.2-prerelease.1</Version>
     <PackageId>Arcmedia.MongoMigrations</PackageId>
     <PackageProjectUrl>https://github.com/arcmedia/DotNetMongoMigrations</PackageProjectUrl>
     <RepositoryUrl>https://github.com/arcmedia/DotNetMongoMigrations</RepositoryUrl>
