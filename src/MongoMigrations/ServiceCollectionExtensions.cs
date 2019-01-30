@@ -21,6 +21,7 @@ namespace MongoMigrations
 
             services.AddSingleton(configuration);
 
+            services.AddTransient<IMigrationTarget, MigrationTarget>();
             services.AddTransient<IMigrationRunner, MigrationRunner>();
             services.AddTransient<IMigrationLocator, MigrationLocator>();
             services.AddTransient<IDatabaseMigrationStatus, DatabaseMigrationStatus>();
